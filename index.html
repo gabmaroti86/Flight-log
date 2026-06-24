@@ -35,8 +35,9 @@ label{font-size:11px;letter-spacing:2px;color:var(--mute);text-transform:upperca
 .cnt input{width:120px;background:transparent;border:none;border-bottom:2px solid var(--edge);color:var(--amber);font-family:var(--mono);font-size:22px;font-weight:700;text-align:right;padding:2px 0 4px;outline:none;}
 input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
 button{font-family:var(--sans);cursor:pointer;}
-.stamp{width:100%;background:var(--amber);border:none;color:#1a1500;border-radius:12px;padding:22px 14px;font-size:18px;font-weight:700;margin-bottom:12px;}
-.stamp.ok{background:var(--green);color:#0c1410;}
+.events{display:flex;flex-direction:column;gap:10px;margin-bottom:14px;}
+.events button{width:100%;background:var(--amber);border:none;color:#1a1500;border-radius:12px;padding:17px 14px;font-size:16px;font-weight:700;line-height:1.2;}
+.events button.ok{background:var(--green);color:#0c1410;}
 .save{width:100%;background:transparent;border:1px solid var(--edge);color:var(--text);border-radius:12px;padding:16px 14px;font-size:15px;font-weight:600;margin-bottom:26px;}
 .save.ok{background:var(--green);border-color:var(--green);color:#0c1410;}
 .logbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
@@ -58,9 +59,6 @@ button{font-family:var(--sans);cursor:pointer;}
 .row{display:flex;align-items:center;gap:12px;padding:12px 14px;}
 .row+.row{border-top:1px solid var(--edge);}
 .labBtn{flex:1;min-width:0;display:flex;align-items:center;gap:6px;background:none;border:none;padding:0;cursor:pointer;color:var(--text);font-size:15px;text-align:left;}
-.lc{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;align-items:flex-start;}
-.lc .labBtn,.lc .labInput{flex:0 0 auto;width:100%;}
-.rowcounts{font-size:12px;color:var(--mute);font-family:var(--mono);letter-spacing:.5px;}
 .labBtn .txt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .labInput{flex:1;min-width:0;background:transparent;border:none;border-bottom:2px solid var(--amber);color:var(--text);font-size:15px;padding:0 0 3px;outline:none;}
 .t{font-family:var(--mono);font-size:16px;font-weight:700;text-align:right;}
@@ -94,21 +92,27 @@ button{font-family:var(--sans);cursor:pointer;}
       <div class="cnt"><label for="crew">Crew</label><input id="crew" type="number" min="0" inputmode="numeric" placeholder="0" /></div>
     </div>
   </div>
-  <button class="stamp" id="stampBtn">Log time stamp</button>
-  <button class="save" id="saveBtn">Save flight</button>
+  <div class="events" id="events">
+    <button data-ev="Chox">Chox</button>
+    <button data-ev="First pax on at aircraft">First pax on at aircraft</button>
+    <button data-ev="Last pax off at aircraft">Last pax off at aircraft</button>
+    <button data-ev="Arrive at gate">Arrive at gate</button>
+    <button data-ev="Last pax to depart gate">Last pax to depart gate</button>
+  </div>
+  <button class="save" id="saveBtn">Save flight (start a new one)</button>
   <div class="logbar"><div class="logttl" id="logTtl">Log</div><div class="links" id="links" style="display:none;"><button class="link amber" id="exportBtn">Export CSV</button><button class="link mute" id="clearBtn">Clear</button></div></div>
   <div class="total" id="total" style="display:none;"><div class="tl">Total passengers</div><div class="tn" id="totalNum">0</div></div>
   <div id="log"></div>
 </div>
 <script>
 var EKEY="flightlog:entries",TKEY="flightlog:title";
-var entries=load(),title=loadT(),currentDir="Departure",editLabelId=null,editTimeId=null,editingTitle=false;
+var entries=load(),title=loadT(),currentDir="Departure",currentSession=null,currentFlight=null,editLabelId=null,editTimeId=null,editingTitle=false;
 function load(){try{return JSON.parse(localStorage.getItem(EKEY))||[]}catch(e){return[]}}
 function saveE(){try{localStorage.setItem(EKEY,JSON.stringify(entries))}catch(e){}}
 function loadT(){try{return localStorage.getItem(TKEY)||"Flight Time Log"}catch(e){return"Flight Time Log"}}
 function saveT(){try{localStorage.setItem(TKEY,title)}catch(e){}}
 var $=function(id){return document.getElementById(id)};
-var flightEl=$("flight"),fromEl=$("fromGate"),toEl=$("toGate"),paxEl=$("pax"),hlEl=$("highlift"),coEl=$("coordinator"),crEl=$("crew"),errEl=$("errmsg"),stampBtn=$("stampBtn"),saveBtn=$("saveBtn"),logEl=$("log"),logTtl=$("logTtl"),links=$("links"),totalEl=$("total"),totalNum=$("totalNum");
+var flightEl=$("flight"),fromEl=$("fromGate"),toEl=$("toGate"),paxEl=$("pax"),hlEl=$("highlift"),coEl=$("coordinator"),crEl=$("crew"),errEl=$("errmsg"),saveBtn=$("saveBtn"),logEl=$("log"),logTtl=$("logTtl"),links=$("links"),totalEl=$("total"),totalNum=$("totalNum");
 function pad(n){return String(n).padStart(2,"0")}
 function fmtClock(d){return pad(d.getHours())+":"+pad(d.getMinutes())+":"+pad(d.getSeconds())}
 function fmtDay(d){var wd=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][d.getDay()],mo=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][d.getMonth()];return wd+" "+pad(d.getDate())+" "+mo}
@@ -122,30 +126,40 @@ function up(el){el.addEventListener("input",function(){var p=el.selectionStart;e
 up(flightEl);up(fromEl);up(toEl);
 flightEl.addEventListener("input",function(){flightEl.classList.remove("err");errEl.classList.remove("show")});
 function flashErr(){flightEl.classList.add("err");errEl.classList.add("show");flightEl.focus();setTimeout(function(){flightEl.classList.remove("err");errEl.classList.remove("show")},1200)}
-stampBtn.addEventListener("click",function(){var fl=flightEl.value.trim().toUpperCase();if(!fl){flashErr();return}var p=parseInt(paxEl.value,10),num=function(el){var n=parseInt(el.value,10);return isNaN(n)?null:n};entries.unshift({id:Date.now()+Math.random(),flight:fl,label:"Time",ts:Date.now(),pax:isNaN(p)?null:p,highlift:num(hlEl),coordinator:num(coEl),crew:num(crEl),fromGate:fromEl.value.trim().toUpperCase(),toGate:toEl.value.trim().toUpperCase(),dir:currentDir});saveE();render();paxEl.value="";hlEl.value="";coEl.value="";crEl.value="";stampBtn.classList.add("ok");stampBtn.textContent="Logged \u2713";setTimeout(function(){stampBtn.classList.remove("ok");stampBtn.textContent="Log time stamp"},900)});
-saveBtn.addEventListener("click",function(){var fl=flightEl.value.trim().toUpperCase();if(!fl){flashErr();return}flightEl.value="";fromEl.value="";toEl.value="";paxEl.value="";hlEl.value="";coEl.value="";crEl.value="";saveBtn.classList.add("ok");saveBtn.textContent="Flight saved \u2713";setTimeout(function(){saveBtn.classList.remove("ok");saveBtn.textContent="Save flight"},1400)});
-$("exportBtn").addEventListener("click",function(){if(!entries.length)return;var rows=[["Flight","Direction","From gate","To gate","Event","Passengers","Highlift","Coordinator","Crew","Date","Time","ISO"]];entries.slice().reverse().forEach(function(e){var d=new Date(e.ts),v=function(x){return x==null?"":x};rows.push([e.flight,e.dir||"",e.fromGate||"",e.toGate||"",e.label,v(e.pax),v(e.highlift),v(e.coordinator),v(e.crew),fmtDay(d),fmtClock(d),d.toISOString()])});var csv=rows.map(function(r){return r.map(function(c){return'"'+String(c).replace(/"/g,'""')+'"'}).join(",")}).join("\n");var a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));a.download="flight-log-"+new Date().toISOString().slice(0,10)+".csv";a.click()});
-$("clearBtn").addEventListener("click",function(){if(entries.length&&confirm("Clear the entire log? This can't be undone.")){entries=[];saveE();render()}});
+function logEvent(label,btn){
+  var fl=flightEl.value.trim().toUpperCase();
+  if(!fl){flashErr();return}
+  if(currentSession===null||fl!==currentFlight){currentSession=String(Date.now())+"-"+Math.random();currentFlight=fl}
+  var p=parseInt(paxEl.value,10),num=function(el){var n=parseInt(el.value,10);return isNaN(n)?null:n};
+  entries.unshift({id:Date.now()+Math.random(),session:currentSession,flight:fl,label:label,ts:Date.now(),pax:isNaN(p)?null:p,highlift:num(hlEl),coordinator:num(coEl),crew:num(crEl),fromGate:fromEl.value.trim().toUpperCase(),toGate:toEl.value.trim().toUpperCase(),dir:currentDir});
+  saveE();render();
+  if(btn){btn.classList.add("ok");btn.textContent="Logged \u2713";setTimeout(function(){btn.classList.remove("ok");btn.textContent=label},800)}
+}
+$("events").querySelectorAll("button").forEach(function(b){b.addEventListener("click",function(){logEvent(b.getAttribute("data-ev"),b)})});
+saveBtn.addEventListener("click",function(){flightEl.value="";fromEl.value="";toEl.value="";paxEl.value="";hlEl.value="";coEl.value="";crEl.value="";currentSession=null;currentFlight=null;flightEl.classList.remove("err");errEl.classList.remove("show");saveBtn.classList.add("ok");saveBtn.textContent="New flight ready \u2713";setTimeout(function(){saveBtn.classList.remove("ok");saveBtn.textContent="Save flight (start a new one)"},1400)});
+$("exportBtn").addEventListener("click",function(){if(!entries.length)return;var rows=[["Flight","Direction","From gate","To gate","Event","Passengers","Highlift","Coordinator","Crew","Date","Time","ISO"]];entries.slice().sort(function(a,b){return a.ts-b.ts}).forEach(function(e){var d=new Date(e.ts),v=function(x){return x==null?"":x};rows.push([e.flight,e.dir||"",e.fromGate||"",e.toGate||"",e.label,v(e.pax),v(e.highlift),v(e.coordinator),v(e.crew),fmtDay(d),fmtClock(d),d.toISOString()])});var csv=rows.map(function(r){return r.map(function(c){return'"'+String(c).replace(/"/g,'""')+'"'}).join(",")}).join("\n");var a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));a.download="flight-log-"+new Date().toISOString().slice(0,10)+".csv";a.click()});
+$("clearBtn").addEventListener("click",function(){if(entries.length&&confirm("Clear the entire log? This can't be undone.")){entries=[];currentSession=null;currentFlight=null;saveE();render()}});
 function recent(items,key){for(var i=0;i<items.length;i++){var v=items[i][key];if(v!=null&&v!=="")return v}return null}
-function sumKey(items,key){var s=0,any=false;items.forEach(function(e){if(e[key]!=null){s+=e[key];any=true}});return any?s:null}
 function render(){
  logTtl.textContent="Log"+(entries.length?" \u00b7 "+entries.length:"");
  links.style.display=entries.length?"flex":"none";
- if(!entries.length){totalEl.style.display="none";logEl.innerHTML='<div class="empty">No times logged yet. Enter a flight number and tap the button to stamp the time.</div>';return}
- var order=[],groups={};entries.forEach(function(e){if(!groups[e.flight]){groups[e.flight]=[];order.push(e.flight)}groups[e.flight].push(e)});
- var total=0,anyPax=false;entries.forEach(function(e){if(e.pax!=null){total+=e.pax;anyPax=true}});
+ if(!entries.length){totalEl.style.display="none";logEl.innerHTML='<div class="empty">No times logged yet. Enter a flight number and tap an event button to stamp the time.</div>';return}
+ var order=[],groups={};
+ entries.forEach(function(e){var k=e.session||("F-"+e.flight);if(!groups[k]){groups[k]=[];order.push(k)}groups[k].push(e)});
+ var total=0,anyPax=false;order.forEach(function(k){var p=recent(groups[k],"pax");if(p!=null){total+=p;anyPax=true}});
  totalEl.style.display=anyPax?"flex":"none";totalNum.textContent=total;
- logEl.innerHTML=order.map(function(fl){
-  var items=groups[fl],p=sumKey(items,"pax"),gF=recent(items,"fromGate"),gT=recent(items,"toGate"),gD=recent(items,"dir"),hl=sumKey(items,"highlift"),co=sumKey(items,"coordinator"),cr=sumKey(items,"crew");
+ logEl.innerHTML=order.map(function(k){
+  var g=groups[k];
+  var items=g.slice().sort(function(a,b){return a.ts-b.ts});
+  var fl=g[0].flight,p=recent(g,"pax"),gF=recent(g,"fromGate"),gT=recent(g,"toGate"),gD=recent(g,"dir"),hl=recent(g,"highlift"),co=recent(g,"coordinator"),cr=recent(g,"crew");
   var route=(gF||gT)?((gF||"—")+" → "+(gT||"—")):"";
   var counts=[p!=null?p+" pax":null,hl!=null?hl+" HL":null,co!=null?co+" coord":null,cr!=null?cr+" crew":null].filter(Boolean).join(" · ");
   var head='<div class="grphd"><span class="fl">'+esc(fl)+'</span>'+(gD?'<span class="badge">'+(gD==="Arrival"?"ARR":"DEP")+'</span>':'')+(route?'<span class="route">'+esc(route)+'</span>':'')+(counts?'<span class="pax">· '+esc(counts)+'</span>':'')+'</div>';
   var rows=items.map(function(e){
    var d=new Date(e.ts);
-   var lab=(editLabelId===String(e.id))?'<input class="labInput" data-edit="'+e.id+'" maxlength="30" value="'+esc(e.label)+'">':'<button class="labBtn" data-lab="'+e.id+'" title="Tap to rename"><span class="txt">'+esc(e.label)+'</span><span class="pencil">\u270E</span></button>';
-   var ec=[e.pax!=null?e.pax+" pax":null,e.highlift!=null?e.highlift+" HL":null,e.coordinator!=null?e.coordinator+" coord":null,e.crew!=null?e.crew+" crew":null].filter(Boolean).join(" · ");
+   var lab=(editLabelId===String(e.id))?'<input class="labInput" data-edit="'+e.id+'" maxlength="40" value="'+esc(e.label)+'">':'<button class="labBtn" data-lab="'+e.id+'" title="Tap to rename"><span class="txt">'+esc(e.label)+'</span><span class="pencil">\u270E</span></button>';
    var tm=(editTimeId===String(e.id))?'<input class="timeInput" type="datetime-local" step="1" data-time="'+e.id+'" value="'+tsLocal(e.ts)+'">':'<button class="timeBtn" data-tb="'+e.id+'" title="Tap to adjust time"><div class="trow"><span class="t">'+fmtClock(d)+'</span><span class="pencil">\u270E</span></div><div class="d">'+fmtDay(d)+'</div></button>';
-   return '<div class="row"><div class="lc">'+lab+(ec?'<div class="rowcounts">'+esc(ec)+'</div>':'')+'</div>'+tm+'<button class="del" data-id="'+e.id+'" aria-label="Delete">\u00d7</button></div>';
+   return '<div class="row">'+lab+tm+'<button class="del" data-id="'+e.id+'" aria-label="Delete">\u00d7</button></div>';
   }).join("");
   return '<div class="grp">'+head+'<div class="card">'+rows+'</div></div>';
  }).join("");
