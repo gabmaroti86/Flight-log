@@ -119,20 +119,21 @@ function up(el){el.addEventListener("input",function(){var p=el.selectionStart;e
 up(flightEl);up(fromEl);up(toEl);
 flightEl.addEventListener("input",function(){flightEl.classList.remove("err");errEl.classList.remove("show")});
 function flashErr(){flightEl.classList.add("err");errEl.classList.add("show");flightEl.focus();setTimeout(function(){flightEl.classList.remove("err");errEl.classList.remove("show")},1200)}
-stampBtn.addEventListener("click",function(){var fl=flightEl.value.trim().toUpperCase();if(!fl){flashErr();return}var p=parseInt(paxEl.value,10),num=function(el){var n=parseInt(el.value,10);return isNaN(n)?null:n};entries.unshift({id:Date.now()+Math.random(),flight:fl,label:"Time",ts:Date.now(),pax:isNaN(p)?null:p,highlift:num(hlEl),coordinator:num(coEl),crew:num(crEl),fromGate:fromEl.value.trim().toUpperCase(),toGate:toEl.value.trim().toUpperCase(),dir:currentDir});saveE();render();stampBtn.classList.add("ok");stampBtn.textContent="Logged \u2713";setTimeout(function(){stampBtn.classList.remove("ok");stampBtn.textContent="Log time stamp"},900)});
+stampBtn.addEventListener("click",function(){var fl=flightEl.value.trim().toUpperCase();if(!fl){flashErr();return}var p=parseInt(paxEl.value,10),num=function(el){var n=parseInt(el.value,10);return isNaN(n)?null:n};entries.unshift({id:Date.now()+Math.random(),flight:fl,label:"Time",ts:Date.now(),pax:isNaN(p)?null:p,highlift:num(hlEl),coordinator:num(coEl),crew:num(crEl),fromGate:fromEl.value.trim().toUpperCase(),toGate:toEl.value.trim().toUpperCase(),dir:currentDir});saveE();render();paxEl.value="";hlEl.value="";coEl.value="";crEl.value="";stampBtn.classList.add("ok");stampBtn.textContent="Logged \u2713";setTimeout(function(){stampBtn.classList.remove("ok");stampBtn.textContent="Log time stamp"},900)});
 saveBtn.addEventListener("click",function(){var fl=flightEl.value.trim().toUpperCase();if(!fl){flashErr();return}flightEl.value="";fromEl.value="";toEl.value="";paxEl.value="";hlEl.value="";coEl.value="";crEl.value="";saveBtn.classList.add("ok");saveBtn.textContent="Flight saved \u2713";setTimeout(function(){saveBtn.classList.remove("ok");saveBtn.textContent="Save flight"},1400)});
 $("exportBtn").addEventListener("click",function(){if(!entries.length)return;var rows=[["Flight","Direction","From gate","To gate","Event","Passengers","Highlift","Coordinator","Crew","Date","Time","ISO"]];entries.slice().reverse().forEach(function(e){var d=new Date(e.ts),v=function(x){return x==null?"":x};rows.push([e.flight,e.dir||"",e.fromGate||"",e.toGate||"",e.label,v(e.pax),v(e.highlift),v(e.coordinator),v(e.crew),fmtDay(d),fmtClock(d),d.toISOString()])});var csv=rows.map(function(r){return r.map(function(c){return'"'+String(c).replace(/"/g,'""')+'"'}).join(",")}).join("\n");var a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));a.download="flight-log-"+new Date().toISOString().slice(0,10)+".csv";a.click()});
 $("clearBtn").addEventListener("click",function(){if(entries.length&&confirm("Clear the entire log? This can't be undone.")){entries=[];saveE();render()}});
 function recent(items,key){for(var i=0;i<items.length;i++){var v=items[i][key];if(v!=null&&v!=="")return v}return null}
+function sumKey(items,key){var s=0,any=false;items.forEach(function(e){if(e[key]!=null){s+=e[key];any=true}});return any?s:null}
 function render(){
  logTtl.textContent="Log"+(entries.length?" \u00b7 "+entries.length:"");
  links.style.display=entries.length?"flex":"none";
  if(!entries.length){totalEl.style.display="none";logEl.innerHTML='<div class="empty">No times logged yet. Enter a flight number and tap the button to stamp the time.</div>';return}
  var order=[],groups={};entries.forEach(function(e){if(!groups[e.flight]){groups[e.flight]=[];order.push(e.flight)}groups[e.flight].push(e)});
- var total=0,anyPax=false;order.forEach(function(fl){var p=recent(groups[fl],"pax");if(p!=null){total+=p;anyPax=true}});
+ var total=0,anyPax=false;entries.forEach(function(e){if(e.pax!=null){total+=e.pax;anyPax=true}});
  totalEl.style.display=anyPax?"flex":"none";totalNum.textContent=total;
  logEl.innerHTML=order.map(function(fl){
-  var items=groups[fl],p=recent(items,"pax"),gF=recent(items,"fromGate"),gT=recent(items,"toGate"),gD=recent(items,"dir"),hl=recent(items,"highlift"),co=recent(items,"coordinator"),cr=recent(items,"crew");
+  var items=groups[fl],p=sumKey(items,"pax"),gF=recent(items,"fromGate"),gT=recent(items,"toGate"),gD=recent(items,"dir"),hl=sumKey(items,"highlift"),co=sumKey(items,"coordinator"),cr=sumKey(items,"crew");
   var route=(gF||gT)?((gF||"—")+" → "+(gT||"—")):"";
   var counts=[p!=null?p+" pax":null,hl!=null?hl+" HL":null,co!=null?co+" coord":null,cr!=null?cr+" crew":null].filter(Boolean).join(" · ");
   var head='<div class="grphd"><span class="fl">'+esc(fl)+'</span>'+(gD?'<span class="badge">'+(gD==="Arrival"?"ARR":"DEP")+'</span>':'')+(route?'<span class="route">'+esc(route)+'</span>':'')+(counts?'<span class="pax">· '+esc(counts)+'</span>':'')+'</div>';
@@ -153,11 +154,10 @@ function render(){
  if(ti){ti.focus();var ap=function(){var id=ti.getAttribute("data-time"),ts=new Date(ti.value).getTime();if(!isNaN(ts))entries=entries.map(function(e){return String(e.id)===id?Object.assign({},e,{ts:ts}):e})};ti.addEventListener("change",ap);ti.addEventListener("blur",function(){ap();editTimeId=null;saveE();render()});ti.addEventListener("keydown",function(e){if(e.key==="Enter"){ap();editTimeId=null;saveE();render()}})}
 }
 render();
-// Inline app manifest so "Add to Home screen" gives a proper standalone app + icon
 (function(){
  var svg="<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' fill='#14171c'/><g fill='none' stroke='#f5b301' stroke-width='24' stroke-linecap='round'><circle cx='256' cy='256' r='150'/><path d='M256 256V154'/><path d='M256 256l74 30'/></g><circle cx='256' cy='256' r='20' fill='#f5b301'/></svg>";
  var icon="data:image/svg+xml,"+encodeURIComponent(svg);
- var ti=document.createElement("link");ti.rel="apple-touch-icon";ti.href=icon;document.head.appendChild(ti);
+ var t=document.createElement("link");t.rel="apple-touch-icon";t.href=icon;document.head.appendChild(t);
  var base=location.href.replace(/[^\/]*([?#].*)?$/,"");
  var m={name:"Flight Time Log",short_name:"Flight Log",start_url:location.href,scope:base,display:"standalone",orientation:"portrait",background_color:"#14171c",theme_color:"#14171c",icons:[{src:icon,sizes:"any",type:"image/svg+xml",purpose:"any maskable"}]};
  var l=document.createElement("link");l.rel="manifest";l.href=URL.createObjectURL(new Blob([JSON.stringify(m)],{type:"application/manifest+json"}));document.head.appendChild(l);
