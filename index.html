@@ -67,18 +67,50 @@ button{font-family:var(--sans);cursor:pointer;}
 .timeBtn .trow{display:flex;align-items:center;gap:5px;justify-content:flex-end;}
 .timeInput{background:var(--bg);color:var(--text);border:1px solid var(--amber);border-radius:8px;padding:6px 8px;font-family:var(--mono);font-size:13px;outline:none;color-scheme:dark;}
 .del{background:none;border:none;color:var(--mute);font-size:18px;padding:0 2px;line-height:1;}
+.countOpen{width:100%;margin-top:16px;background:transparent;border:1px dashed var(--amberDim);color:var(--amber);border-radius:10px;padding:13px 15px;font-weight:600;font-size:14px;letter-spacing:.5px;display:flex;justify-content:space-between;align-items:center;}
+.countOpenNum{font-family:var(--mono);font-size:18px;font-weight:700;}
+.counter{position:fixed;inset:0;background:var(--bg);z-index:50;display:none;flex-direction:column;padding:env(safe-area-inset-top) 18px calc(env(safe-area-inset-bottom) + 14px);}
+.counter.show{display:flex;}
+.counterTop{display:flex;justify-content:space-between;align-items:center;padding:16px 0;}
+.counterTitle{font-size:12px;letter-spacing:3px;text-transform:uppercase;color:var(--mute);font-weight:600;}
+.counterClose{background:none;border:none;color:var(--mute);font-size:30px;line-height:1;padding:0 4px;}
+.plus{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;background:var(--amber);border:none;border-radius:18px;color:#1a1500;margin-bottom:14px;}
+.counterNum{font-family:var(--mono);font-size:clamp(130px,42vw,200px);font-weight:700;line-height:1;}
+.plusHint{font-size:18px;font-weight:700;letter-spacing:2px;opacity:.85;}
+.minus{height:110px;background:var(--panel);border:1px solid var(--edge);border-radius:18px;color:var(--text);font-size:56px;font-weight:700;margin-bottom:14px;}
+.counterActions{display:flex;gap:12px;}
+.counterActions button{flex:1;border-radius:14px;padding:18px 0;font-size:16px;font-weight:700;border:none;}
+.cSave{background:var(--green);color:#0c1410;}
+.cClear{background:transparent;border:1px solid var(--edge);color:var(--text);}
+.tabs{display:flex;gap:8px;margin-bottom:18px;}
+.tabs button{flex:1;background:var(--panel);border:1px solid var(--edge);color:var(--mute);border-radius:10px;padding:11px 0;font-size:14px;font-weight:700;letter-spacing:1px;cursor:pointer;}
+.tabs button.on{background:var(--amber);border-color:var(--amber);color:#1a1500;}
+.filterRow{display:flex;gap:10px;margin-bottom:14px;}
+.filterRow input{flex:1;background:var(--panel);border:1px solid var(--edge);border-radius:10px;color:var(--text);font-family:var(--mono);font-size:16px;padding:12px 14px;outline:none;text-transform:uppercase;letter-spacing:1px;}
+.refresh{background:var(--amber);border:none;color:#1a1500;border-radius:10px;padding:0 16px;font-weight:700;font-size:14px;cursor:pointer;}
+.meta{font-size:11px;color:var(--mute);margin-bottom:12px;letter-spacing:.5px;}
+.flight{display:flex;align-items:center;gap:12px;background:var(--panel);border:1px solid var(--edge);border-radius:12px;padding:12px 14px;margin-bottom:8px;}
+.flight .fn{font-family:var(--mono);font-weight:700;font-size:17px;color:var(--amber);letter-spacing:1px;min-width:80px;}
+.flight .mid{flex:1;min-width:0;}
+.flight .ap{font-size:14px;}
+.flight .right{text-align:right;}
+.flight .tm{font-family:var(--mono);font-size:15px;font-weight:700;color:var(--text);}
+.note{border:1px dashed var(--edge);border-radius:12px;padding:20px 16px;text-align:center;color:var(--mute);font-size:14px;line-height:1.5;}
+.note.err{color:var(--red);}
 </style>
 </head>
 <body>
 <div class="wrap">
   <header><div id="titleSlot"></div><div class="clock" id="clock">--:--:--</div></header>
+  <div class="tabs" id="tabs"><button data-view="log" class="on">Log</button><button data-view="flights">Flights</button></div>
+  <div id="logView">
   <div class="board">
     <label for="flight">Flight number</label>
     <input id="flight" placeholder="—— ———" spellcheck="false" autocomplete="off" />
     <div class="errmsg" id="errmsg">Enter a flight number first.</div>
     <div class="toggle" id="toggle">
-      <button data-dir="Arrival">Arrival</button>
-      <button data-dir="Departure" class="on">Departure</button>
+      <button data-dir="Arrival" class="on">Arrival</button>
+      <button data-dir="Departure">Departure</button>
     </div>
     <div class="gates">
       <div class="col"><label for="fromGate">From gate</label><input id="fromGate" class="gateInput" placeholder="—" autocomplete="off" /></div>
@@ -91,22 +123,31 @@ button{font-family:var(--sans);cursor:pointer;}
       <div class="cnt"><label for="coordinator">Coordinator</label><input id="coordinator" type="number" min="0" inputmode="numeric" placeholder="0" /></div>
       <div class="cnt"><label for="crew">Crew</label><input id="crew" type="number" min="0" inputmode="numeric" placeholder="0" /></div>
     </div>
+    <button class="countOpen" id="countOpen"><span>＋ Count passengers</span><span class="countOpenNum" id="countOpenNum">0</span></button>
   </div>
-  <div class="events" id="events">
-    <button data-ev="Chox">Chox</button>
-    <button data-ev="First pax on at aircraft">First pax on at aircraft</button>
-    <button data-ev="Last pax off at aircraft">Last pax off at aircraft</button>
-    <button data-ev="Arrive at gate">Arrive at gate</button>
-    <button data-ev="Last pax to depart gate">Last pax to depart gate</button>
-  </div>
+  <div class="events" id="events"></div>
   <button class="save" id="saveBtn">Save flight (start a new one)</button>
   <div class="logbar"><div class="logttl" id="logTtl">Log</div><div class="links" id="links" style="display:none;"><button class="link amber" id="exportBtn">Export CSV</button><button class="link mute" id="clearBtn">Clear</button></div></div>
   <div class="total" id="total" style="display:none;"><div class="tl">Total passengers</div><div class="tn" id="totalNum">0</div></div>
   <div id="log"></div>
+  </div>
+  <div id="flightsView" style="display:none;">
+    <div class="toggle" id="fdir"><button data-fd="arr" class="on">Arrivals</button><button data-fd="dep">Departures</button></div>
+    <div class="filterRow"><input id="ffilter" placeholder="Filter flight" autocomplete="off" spellcheck="false" /><button class="refresh" id="frefresh">Refresh</button></div>
+    <div class="meta" id="fmeta"></div>
+    <div id="flist"></div>
+    <div class="note" style="margin-top:10px;font-size:12px;">Live aircraft within ~40nm of Melbourne from a free public feed. Arrivals = descending, Departures = climbing. Callsigns are ATC format (QFA = Qantas, JST = Jetstar).</div>
+  </div>
+</div>
+<div class="counter" id="counter">
+  <div class="counterTop"><span class="counterTitle">Count passengers</span><button class="counterClose" id="counterClose">&times;</button></div>
+  <button class="plus" id="plusBtn"><span class="counterNum" id="counterNum">0</span><span class="plusHint">TAP TO ADD +1</span></button>
+  <button class="minus" id="minusBtn">&minus;</button>
+  <div class="counterActions"><button class="cSave" id="counterSave">Save</button><button class="cClear" id="counterClear">Clear</button></div>
 </div>
 <script>
 var EKEY="flightlog:entries",TKEY="flightlog:title";
-var entries=load(),title=loadT(),currentDir="Departure",currentSession=null,currentFlight=null,editLabelId=null,editTimeId=null,editingTitle=false;
+var entries=load(),title=loadT(),currentDir="Arrival",currentSession=null,currentFlight=null,editLabelId=null,editTimeId=null,editingTitle=false;
 function load(){try{return JSON.parse(localStorage.getItem(EKEY))||[]}catch(e){return[]}}
 function saveE(){try{localStorage.setItem(EKEY,JSON.stringify(entries))}catch(e){}}
 function loadT(){try{return localStorage.getItem(TKEY)||"Flight Time Log"}catch(e){return"Flight Time Log"}}
@@ -121,7 +162,7 @@ function tsLocal(ts){var d=new Date(ts);return d.getFullYear()+"-"+pad(d.getMont
 function tick(){$("clock").textContent=fmtClock(new Date())}tick();setInterval(tick,1000);
 function renderTitle(){var s=$("titleSlot");if(editingTitle){s.innerHTML='<input class="brandInput" id="ti" maxlength="40">';var i=$("ti");i.value=title;i.focus();i.select();var c=function(){title=i.value.trim()||"Flight Time Log";editingTitle=false;saveT();renderTitle()};i.addEventListener("blur",c);i.addEventListener("keydown",function(e){if(e.key==="Enter")c()})}else{s.innerHTML='<button class="brandBtn" id="tb" title="Tap to rename"><span class="txt"></span><span class="pencil">\u270E</span></button>';$("tb").querySelector(".txt").textContent=title;$("tb").addEventListener("click",function(){editingTitle=true;renderTitle()})}}
 renderTitle();
-$("toggle").querySelectorAll("button").forEach(function(b){b.addEventListener("click",function(){currentDir=b.getAttribute("data-dir");$("toggle").querySelectorAll("button").forEach(function(x){x.classList.toggle("on",x===b)})})});
+$("toggle").querySelectorAll("button").forEach(function(b){b.addEventListener("click",function(){currentDir=b.getAttribute("data-dir");$("toggle").querySelectorAll("button").forEach(function(x){x.classList.toggle("on",x===b)});renderEvents()})});
 function up(el){el.addEventListener("input",function(){var p=el.selectionStart;el.value=el.value.toUpperCase();try{el.setSelectionRange(p,p)}catch(e){}})}
 up(flightEl);up(fromEl);up(toEl);
 flightEl.addEventListener("input",function(){flightEl.classList.remove("err");errEl.classList.remove("show")});
@@ -135,7 +176,9 @@ function logEvent(label,btn){
   saveE();render();
   if(btn){btn.classList.add("ok");btn.textContent="Logged \u2713";setTimeout(function(){btn.classList.remove("ok");btn.textContent=label},800)}
 }
-$("events").querySelectorAll("button").forEach(function(b){b.addEventListener("click",function(){logEvent(b.getAttribute("data-ev"),b)})});
+var EVENTS={Arrival:["Chox","First pax on at aircraft","Last pax off at aircraft","Arrive at gate","Last pax to depart gate"],Departure:["First pax on gate","Last pax to depart gate","Arrive at plane","Last pax off at plane","Aircraft pushback"]};
+function renderEvents(){var c=$("events");c.innerHTML="";EVENTS[currentDir].forEach(function(lab){var b=document.createElement("button");b.textContent=lab;b.addEventListener("click",function(){logEvent(lab,b)});c.appendChild(b)})}
+renderEvents();
 saveBtn.addEventListener("click",function(){flightEl.value="";fromEl.value="";toEl.value="";paxEl.value="";hlEl.value="";coEl.value="";crEl.value="";currentSession=null;currentFlight=null;flightEl.classList.remove("err");errEl.classList.remove("show");saveBtn.classList.add("ok");saveBtn.textContent="New flight ready \u2713";setTimeout(function(){saveBtn.classList.remove("ok");saveBtn.textContent="Save flight (start a new one)"},1400)});
 $("exportBtn").addEventListener("click",function(){if(!entries.length)return;var rows=[["Flight","Direction","From gate","To gate","Event","Passengers","Highlift","Coordinator","Crew","Date","Time","ISO"]];entries.slice().sort(function(a,b){return a.ts-b.ts}).forEach(function(e){var d=new Date(e.ts),v=function(x){return x==null?"":x};rows.push([e.flight,e.dir||"",e.fromGate||"",e.toGate||"",e.label,v(e.pax),v(e.highlift),v(e.coordinator),v(e.crew),fmtDay(d),fmtClock(d),d.toISOString()])});var csv=rows.map(function(r){return r.map(function(c){return'"'+String(c).replace(/"/g,'""')+'"'}).join(",")}).join("\n");var a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));a.download="flight-log-"+new Date().toISOString().slice(0,10)+".csv";a.click()});
 $("clearBtn").addEventListener("click",function(){if(entries.length&&confirm("Clear the entire log? This can't be undone.")){entries=[];currentSession=null;currentFlight=null;saveE();render()}});
@@ -172,6 +215,52 @@ function render(){
  if(ti){ti.focus();var ap=function(){var id=ti.getAttribute("data-time"),ts=new Date(ti.value).getTime();if(!isNaN(ts))entries=entries.map(function(e){return String(e.id)===id?Object.assign({},e,{ts:ts}):e})};ti.addEventListener("change",ap);ti.addEventListener("blur",function(){ap();editTimeId=null;saveE();render()});ti.addEventListener("keydown",function(e){if(e.key==="Enter"){ap();editTimeId=null;saveE();render()}})}
 }
 render();
+var CKEY="flightlog:counter";
+function loadC(){try{var v=parseInt(localStorage.getItem(CKEY),10);return isNaN(v)?0:v}catch(e){return 0}}
+function saveC(){try{localStorage.setItem(CKEY,String(counter))}catch(e){}}
+var counter=loadC();
+function updCounter(){$("counterNum").textContent=counter;$("countOpenNum").textContent=counter}
+function buzz(){if(navigator.vibrate){try{navigator.vibrate(35)}catch(e){}}}
+updCounter();
+$("countOpen").addEventListener("click",function(){updCounter();$("counter").classList.add("show")});
+$("plusBtn").addEventListener("click",function(){counter++;updCounter();saveC();buzz()});
+$("minusBtn").addEventListener("click",function(){if(counter>0){counter--;updCounter();saveC();buzz()}});
+$("counterClear").addEventListener("click",function(){counter=0;updCounter();saveC()});
+$("counterSave").addEventListener("click",function(){saveC();$("counter").classList.remove("show")});
+$("counterClose").addEventListener("click",function(){saveC();$("counter").classList.remove("show")});
+var MELLAT=-37.669,MELLON=144.841,fdir="arr",fdata=null,ftimer=null;
+function haversineNm(la1,lo1,la2,lo2){var R=3440.065,toR=Math.PI/180,dLa=(la2-la1)*toR,dLo=(lo2-lo1)*toR;var a=Math.sin(dLa/2)*Math.sin(dLa/2)+Math.cos(la1*toR)*Math.cos(la2*toR)*Math.sin(dLo/2)*Math.sin(dLo/2);return Math.round(R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a)))}
+function classify(a){var vr=typeof a.baro_rate==="number"?a.baro_rate:0;if(a.alt_baro==="ground")return"gnd";if(vr>200)return"dep";if(vr<-200)return"arr";return"lvl"}
+function fetchFlights(){$("fmeta").textContent="Loading\u2026";loadAc(false)}
+function loadAc(viaProxy){
+  var raw="https://api.adsb.lol/v2/lat/-37.669/lon/144.841/dist/40";
+  var url=viaProxy?("https://corsproxy.io/?url="+encodeURIComponent(raw)):raw;
+  fetch(url).then(function(r){if(!r.ok)throw new Error("HTTP "+r.status);return r.json()}).then(function(j){fdata=j.ac||j.aircraft||[];renderFlights()}).catch(function(e){if(!viaProxy){loadAc(true)}else{$("fmeta").textContent="";$("flist").innerHTML='<div class="note err">Couldn\'t load live flights \u2014 '+esc(String(e.message))+'. Tell me this exact error and I\'ll fix it.</div>'}});
+}
+function renderFlights(){
+  if(!fdata){$("fmeta").textContent="Tap Refresh.";return}
+  var q=$("ffilter").value.trim().toUpperCase();
+  var list=fdata.filter(function(a){return a.flight&&a.flight.trim()}).map(function(a){a._cls=classify(a);a._d=(a.lat!=null&&a.lon!=null)?haversineNm(MELLAT,MELLON,a.lat,a.lon):999;a._cs=a.flight.trim();return a}).filter(function(a){return a._cls===fdir});
+  if(q)list=list.filter(function(a){return a._cs.toUpperCase().indexOf(q)!==-1});
+  list.sort(function(a,b){return a._d-b._d});
+  $("fmeta").textContent=list.length+" "+(fdir==="arr"?"arriving":"departing")+" near MEL \u00b7 "+new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});
+  $("flist").innerHTML=list.length?list.map(function(a){
+    var alt=a.alt_baro==="ground"?"GND":(a.alt_baro!=null?a.alt_baro+" ft":"");
+    var sp=a.gs!=null?Math.round(a.gs)+" kt":"";
+    var arrow=fdir==="arr"?"\u2193":"\u2191";
+    return '<div class="flight"><div class="fn">'+esc(a._cs)+'</div><div class="mid"><div class="ap">'+arrow+' '+esc(alt)+(sp?' \u00b7 '+esc(sp):'')+'</div></div><div class="right"><div class="tm">'+a._d+' nm</div></div></div>';
+  }).join(""):'<div class="note">No '+(fdir==="arr"?"arrivals":"departures")+' match right now.</div>';
+}
+function showView(v){
+  $("logView").style.display=v==="log"?"block":"none";
+  $("flightsView").style.display=v==="flights"?"block":"none";
+  $("tabs").querySelectorAll("button").forEach(function(b){b.classList.toggle("on",b.getAttribute("data-view")===v)});
+  if(v==="flights"){fetchFlights();if(ftimer)clearInterval(ftimer);ftimer=setInterval(fetchFlights,20000)}else if(ftimer){clearInterval(ftimer);ftimer=null}
+}
+$("tabs").querySelectorAll("button").forEach(function(b){b.addEventListener("click",function(){showView(b.getAttribute("data-view"))})});
+$("fdir").querySelectorAll("button").forEach(function(b){b.addEventListener("click",function(){fdir=b.getAttribute("data-fd");$("fdir").querySelectorAll("button").forEach(function(x){x.classList.toggle("on",x===b)});renderFlights()})});
+$("ffilter").addEventListener("input",renderFlights);
+$("frefresh").addEventListener("click",fetchFlights);
 (function(){
  var svg="<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' fill='#14171c'/><g fill='none' stroke='#f5b301' stroke-width='24' stroke-linecap='round'><circle cx='256' cy='256' r='150'/><path d='M256 256V154'/><path d='M256 256l74 30'/></g><circle cx='256' cy='256' r='20' fill='#f5b301'/></svg>";
  var icon="data:image/svg+xml,"+encodeURIComponent(svg);
